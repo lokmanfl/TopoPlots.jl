@@ -4,6 +4,7 @@ authors = ["Benedikt Ehinger", "Simon Danisch", "Beacon Biosignals, Inc."]
 version = "0.1.2"
 
 [deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Delaunay = "07eb4e4e-0c6d-46ef-bc4e-83d5e5d860a9"
 Dierckx = "39dd38d3-220a-591b-8e3c-4c3a8c710a94"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
