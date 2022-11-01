@@ -1,16 +1,7 @@
-using Pkg
-Pkg.activate("dev/TopoPlots.jl/")
-using CairoMakie
-using TopoPlots
-
-# https://docs.makie.org/stable/tutorials/layout-tutorial/
-
 canvasResolution = 1000
 bgcolor = RGBf(0.98, 0.98, 0.98)
-# canvas
-f = Figure(backgroundcolor = bgcolor,resolution = (canvasResolution, canvasResolution))
 
-function dummyPlotFunc(data, topoplotLabels, predictorBounds::Vector{Int64}, predictorValues::Vector{Int64}, circleLabel::String)
+function dummyPlotFunc(data, topoplotLabels, predictorBounds::Vector{Int64}, predictorValues::Vector{Int64}, circleLabel::String, colorBarLablel::String)
     if(length(predictorBounds) != 2)
         error("the predictorBounds vector needs exactly two values")
     end
@@ -27,8 +18,29 @@ function dummyPlotFunc(data, topoplotLabels, predictorBounds::Vector{Int64}, pre
         error("data and topoplotLabels have to be of the same size")
     end
 
+    f = Figure(backgroundcolor = bgcolor,resolution = (canvasResolution, canvasResolution))
+
     plotCircularAxis(f, predictorBounds,circleLabel)
-    plotTopoPlots(data, topoplotLabels, predictorValues, predictorBounds)
+
+    min, max = calculateGlobalMaxValues(data)
+    
+    plotTopoPlots(f, data, topoplotLabels, predictorValues, predictorBounds, min, max)
+    Colorbar(f, bbox = BBox(800,900,50,200), colorrange=(min, max),colormap = Reverse(:RdBu), label=colorBarLablel)
+    return f
+end
+
+function calculateGlobalMaxValues(data)
+    globalMaxVal = 0
+
+    for (index, value) in enumerate(data)
+        datapoints = value[1]
+        datapoints1d = vec(copy(datapoints))
+        localMaxVal = maximum(abs.(quantile!(datapoints1d, [0.01,0.99])))
+        if(localMaxVal > globalMaxVal)
+            globalMaxVal = localMaxVal
+        end
+    end
+    return (-globalMaxVal,globalMaxVal)
 end
 
 function plotCircularAxis(f, predictorBounds, label)
@@ -59,21 +71,21 @@ function plotCircularAxis(f, predictorBounds, label)
     text!(circleAxis, 0, 0, text = label, align = (:center, :center),textsize = 40)
 end
 
-function plotTopoPlots(data, topoplotLabels, predictorValues, predictorBounds)
+# four labels around the circle, middle values are the 0.25, 0.5, and 0.75 quantiles
+function calculateAxisLabels(predictorBounds)
+    nonboundlabels = quantile(predictorBounds,[0.25,0.5,0.75])
+    # third label is on the left and it tends to cover the circle so added some blank spaces to tackle that
+    return [string(trunc(Int,predictorBounds[1])), string(trunc(Int,nonboundlabels[1])), string(trunc(Int,nonboundlabels[2]), "   "), string(trunc(Int,nonboundlabels[3]))]
+end
+
+function plotTopoPlots(f, data, topoplotLabels, predictorValues, predictorBounds, globalmin, globalmax)
     for (index, value) in enumerate(data)
         datapoints, positions = value
         eegaxis = Axis(f, bbox = calculateBBoxCoordiantes(predictorValues[index],predictorBounds), backgroundcolor = bgcolor)
         hidedecorations!(eegaxis)
         hidespines!(eegaxis)
-        TopoPlots.eeg_topoplot!(datapoints[:, 340, 1], eegaxis, topoplotLabels[index]; positions=positions)
+        TopoPlots.eeg_topoplot!(datapoints[:, 340, 1], eegaxis, topoplotLabels[index]; positions=positions, colorrange = (globalmin, globalmax))
     end
-end
-
-# four labels around the circle, middle values are the 0.25 and 0.75 quantiles
-function calculateAxisLabels(predictorBounds)
-    nonboundlabels = quantile(predictorBounds,[0.25,0.5,0.75])
-    # third label is on the left and it tends to cover the circle so added some blank spaces to tackle that
-    return [string(trunc(Int,predictorBounds[1])), string(trunc(Int,nonboundlabels[1])), string(trunc(Int,nonboundlabels[2]), "   "), string(trunc(Int,nonboundlabels[3]))]
 end
 
 function calculateBBoxCoordiantes(predictorValue, bounds)
@@ -87,9 +99,7 @@ function calculateBBoxCoordiantes(predictorValue, bounds)
     return BBox(canvasResolution/2-sizeOfBBox/2 + x, canvasResolution/2+sizeOfBBox-sizeOfBBox/2 + x, canvasResolution/2-sizeOfBBox/2 + y, canvasResolution/2+sizeOfBBox-sizeOfBBox/2 + y)
 end
 
-data = TopoPlots.example_data()
-labels = ["s$i" for i in 1:size(data, 1)]
+#data = TopoPlots.example_data()
+#labels = ["s$i" for i in 1:size(data, 1)]
 
-dummyPlotFunc([data,data,data,data,data,data,data,data], [labels,labels,labels,labels,labels,labels,labels,labels], [0,360], [0,50,80,120,180,210,280,330], "incoming\nsaccade\namplitude [°]")
-
-f
+#f = dummyPlotFunc([data,data,data,data,data,data,data,data], [labels,labels,labels,labels,labels,labels,labels,labels], [0,360], [0,50,80,120,180,210,280,330], "incoming\nsaccade\namplitude [°]", "FRP [µV]")

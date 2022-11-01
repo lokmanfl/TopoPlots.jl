@@ -28,6 +28,7 @@ include("interpolators.jl")
 include("extrapolation.jl")
 include("core-recipe.jl")
 include("eeg.jl")
+include("circularplot.jl")
 
 # Interpolators
 export ClaughTochter, SplineInterpolator, DelaunayMesh, NullInterpolator, ScatteredInterpolationMethod
